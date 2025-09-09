@@ -1,15 +1,16 @@
 # domain-shake
 
-To install dependencies:
+Browser-only utilities that provide a peer initiator and responder for
+performing a WebRTC handshake.
+
+## Build
+
+Install dependencies and compile the TypeScript sources:
 
 ```bash
-bun install
+npm install
+npm run build
 ```
 
-To run:
-
-```bash
-bun run 
-```
-
-This project was created using `bun init` in bun v1.2.17. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+The generated JavaScript in the `js/` directory can be loaded directly in
+modern browsers.

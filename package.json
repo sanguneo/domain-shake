@@ -13,9 +13,5 @@
   "type": "module",
   "devDependencies": {
     "typescript": "^5.6.3"
-  },
-  "browserslist": [
-    "last 2 Chrome versions",
-    "last 2 Edge versions"
-  ]
+  }
 }
