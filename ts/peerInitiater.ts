@@ -1,5 +1,5 @@
-// a-bridge.ts
-import type { TDomainShakePostMessage, TResponseMessage } from './dshake.type';
+// peerInitiater.ts
+import type { TDomainShakePostMessage, TResponseMessage } from './dshake.types';
 
 type Options = {
   partnerUrl: string;
@@ -10,7 +10,7 @@ type Options = {
   requestTimeoutMs?: number;
 };
 
-export function createPeerInitiatorBridge({
+export function createPeerInitiaterBridge({
   partnerUrl,
   partnerOrigin,
   allowedOrigins = [partnerOrigin],
@@ -24,7 +24,10 @@ export function createPeerInitiatorBridge({
   let readyReject!: (e: unknown) => void;
   let readyTimer: number | null = null;
 
-  const readyPromise = new Promise<boolean>((res, rej) => { readyResolve = res; readyReject = rej; });
+  const readyPromise = new Promise<boolean>((res: (v: boolean) => void, rej: (e: unknown) => void) => {
+    readyResolve = res;
+    readyReject = rej;
+  });
 
   let reqSeq = 1;
   const pending = new Map<string, {
@@ -51,7 +54,7 @@ export function createPeerInitiatorBridge({
     if (!allowedOrigins.includes(event.origin)) return;
 
     const data = event.data as TDomainShakePostMessage | undefined;
-    if (!data || (data as any).__dshake__ !== true) return;
+    if (!data || (data as { __dshake__?: boolean }).__dshake__ !== true) return;
 
     if (data.type === 'READY') {
       isReady = true;
@@ -77,7 +80,7 @@ export function createPeerInitiatorBridge({
     const requestId = `req_${Date.now()}_${reqSeq++}`;
     const msg: TDomainShakePostMessage = { __dshake__: true, type: 'REQUEST', requestId, action, payload };
 
-    const p = new Promise<unknown>((resolve, reject) => {
+    const p = new Promise<unknown>((resolve: (v: unknown) => void, reject: (e: unknown) => void) => {
       const timer = window.setTimeout(() => {
         pending.delete(requestId);
         reject(new Error(`Request timeout: ${action}`));

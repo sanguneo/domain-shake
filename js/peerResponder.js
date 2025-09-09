@@ -1,4 +1,4 @@
-// b-bridge.js
+// peerResponder.js
 // Usage:
 //   const bridge = createPeerResponderBridge({
 //     openerOrigin: 'https://a.example.com',

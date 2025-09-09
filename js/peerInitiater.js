@@ -1,6 +1,6 @@
-// a-bridge.js
+// peerInitiater.js
 // Usage:
-//   const bridge = createPeerInitiatorBridge({
+//   const bridge = createPeerInitiaterBridge({
 //     partnerUrl: 'https://b.example.com/receiver.html',
 //     partnerOrigin: 'https://b.example.com',
 //     allowedOrigins: ['https://b.example.com'],

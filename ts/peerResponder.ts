@@ -1,4 +1,4 @@
-// b-bridge.ts
+// peerResponder.ts
 import type { HandlerMap, TDomainShakePostMessage, TRequestMessage } from './dshake.types';
 
 type Options = {
@@ -14,8 +14,8 @@ export function createPeerResponderBridge({
   handlers = {},
   readyDelayMs = 0,
 }: Options) {
-  function isXpost(data: any): data is TDomainShakePostMessage {
-    return data && typeof data === 'object' && data.__dshake__ === true;
+  function isXpost(data: unknown): data is TDomainShakePostMessage {
+    return typeof data === 'object' && data !== null && (data as { __dshake__?: boolean }).__dshake__ === true;
   }
 
   function onMessage(event: MessageEvent) {
@@ -38,8 +38,9 @@ export function createPeerResponderBridge({
     try {
       const result = await handler(payload);
       targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: true, payload: result }, targetOrigin);
-    } catch (err: any) {
-      targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: false, error: err?.message || String(err) }, targetOrigin);
+    } catch (err: unknown) {
+      const message = (err as { message?: string }).message || String(err);
+      targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: false, error: message }, targetOrigin);
     }
   }
 
