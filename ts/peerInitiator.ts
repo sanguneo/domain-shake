@@ -1,4 +1,4 @@
-// peerInitiater.ts
+// peerInitiator.ts
 import type { TDomainShakePostMessage, TResponseMessage } from './dshake.types';
 
 type Options = {
@@ -10,7 +10,7 @@ type Options = {
   requestTimeoutMs?: number;
 };
 
-export function createPeerInitiaterBridge({
+export function createPeerInitiatorBridge({
   partnerUrl,
   partnerOrigin,
   allowedOrigins = [partnerOrigin],

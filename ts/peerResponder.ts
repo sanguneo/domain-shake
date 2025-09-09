@@ -14,7 +14,7 @@ export function createPeerResponderBridge({
   handlers = {},
   readyDelayMs = 0,
 }: Options) {
-  function isXpost(data: unknown): data is TDomainShakePostMessage {
+  function isDshake(data: unknown): data is TDomainShakePostMessage {
     return typeof data === 'object' && data !== null && (data as { __dshake__?: boolean }).__dshake__ === true;
   }
 
@@ -23,7 +23,7 @@ export function createPeerResponderBridge({
     if (!allowedOrigins.includes(event.origin)) return;
 
     const data = event.data;
-    if (!isXpost(data) || data.type !== 'REQUEST') return;
+    if (!isDshake(data) || data.type !== 'REQUEST') return;
 
     const { requestId, action, payload } = data as TRequestMessage;
     void handleRequest(event.source as Window, event.origin, requestId, action, payload);

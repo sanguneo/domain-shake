@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["ts/**/*", "global.d.ts"]
+  "include": ["ts/**/*"]
 }

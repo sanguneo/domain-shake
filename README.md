@@ -6,18 +6,18 @@ communication channel between two independent windows. The modules use the
 `postMessage` API and are intended for modern Chrome and Edge environments.
 
 ## Purpose
-`peerInitiater` opens a partner window and performs a handshake before sending
+`peerInitiator` opens a partner window and performs a handshake before sending
 requests, while `peerResponder` lives in the opened window and dispatches those
 requests to user‑defined handlers. This enables cross‑origin pages to exchange
 data without bundling or relying on a command‑line runtime.
 
 ## Usage
-### Initiater
+### Initiator
 ```html
 <script type="module">
-import { createPeerInitiaterBridge } from './js/peerInitiater.js';
+import { createPeerInitiatorBridge } from './js/peerInitiator.js';
 
-const bridge = createPeerInitiaterBridge({
+const bridge = createPeerInitiatorBridge({
   partnerUrl: 'https://b.example.com/receiver.html',
   partnerOrigin: 'https://b.example.com',
   allowedOrigins: ['https://b.example.com']
@@ -47,7 +47,7 @@ bridge.start();
 
 ## Caution
 - Always restrict `allowedOrigins` to trusted domains to avoid leaking data.
-- Popup blockers may prevent the initiater from opening the responder window.
+- Popup blockers may prevent the initiator from opening the responder window.
 - Unhandled requests time out to prevent hanging promises.
 - The modules are not shipped with a bundler; use your existing build pipeline
   if you need to transpile or minify the source.
