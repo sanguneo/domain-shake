@@ -1,5 +1,14 @@
-// a-bridge.ts
-import type { TDomainShakePostMessage, TResponseMessage } from './dshake.type';
+// peerInitiator.ts
+// Usage:
+//   const bridge = createPeerInitiatorBridge({
+//     partnerUrl: 'https://b.example.com/receiver.html',
+//     partnerOrigin: 'https://b.example.com',
+//     allowedOrigins: ['https://b.example.com'],
+//   });
+//   await bridge.openAndHandshake();
+//   const result = await bridge.send('DO_SOMETHING', { x: 1 });
+
+import type { TDomainShakePostMessage, TResponseMessage } from './dshake.types';
 
 type Options = {
   partnerUrl: string;

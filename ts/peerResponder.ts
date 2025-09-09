@@ -1,4 +1,14 @@
-// b-bridge.ts
+// peerResponder.ts
+// Usage:
+//   const bridge = createPeerResponderBridge({
+//     openerOrigin: 'https://a.example.com',
+//     allowedOrigins: ['https://a.example.com'],
+//     handlers: {
+//       DO_SOMETHING: async (payload) => ({ ok: true, got: payload }),
+//     },
+//   });
+//   bridge.start();
+ 
 import type { HandlerMap, TDomainShakePostMessage, TRequestMessage } from './dshake.types';
 
 type Options = {
