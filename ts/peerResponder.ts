@@ -1,5 +1,15 @@
-// b-bridge.ts
-import type { HandlerMap, TDomainShakePostMessage, TRequestMessage } from './dshake.types';
+// peerResponder.ts
+// Usage:
+//   const bridge = createPeerResponderBridge({
+//     openerOrigin: 'https://a.example.com',
+//     allowedOrigins: ['https://a.example.com'],
+//     handlers: {
+//       DO_SOMETHING: async (payload) => { return { ok: true, got: payload }; },
+//     },
+//   });
+//   bridge.start();
+
+import type {Handler, HandlerMap, TDomainShakePostMessage, TRequestMessage} from './dshake.types';
 
 type Options = {
   openerOrigin: string;
@@ -14,8 +24,9 @@ export function createPeerResponderBridge({
   handlers = {},
   readyDelayMs = 0,
 }: Options) {
-  function isXpost(data: any): data is TDomainShakePostMessage {
-    return data && typeof data === 'object' && data.__dshake__ === true;
+  const _handlers = Object.assign({}, handlers);
+  function isDshake(data: unknown): data is TDomainShakePostMessage {
+    return typeof data === 'object' && data !== null && (data as { __dshake__?: boolean }).__dshake__ === true;
   }
 
   function onMessage(event: MessageEvent) {
@@ -23,14 +34,14 @@ export function createPeerResponderBridge({
     if (!allowedOrigins.includes(event.origin)) return;
 
     const data = event.data;
-    if (!isXpost(data) || data.type !== 'REQUEST') return;
+    if (!isDshake(data) || data.type !== 'REQUEST') return;
 
     const { requestId, action, payload } = data as TRequestMessage;
     void handleRequest(event.source as Window, event.origin, requestId, action, payload);
   }
 
   async function handleRequest(targetWin: Window, targetOrigin: string, requestId: string, action: string, payload: unknown) {
-    const handler = handlers[action];
+    const handler = _handlers[action];
     if (!handler) {
       targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: false, error: `Unknown action: ${action}` }, targetOrigin);
       return;
@@ -38,8 +49,9 @@ export function createPeerResponderBridge({
     try {
       const result = await handler(payload);
       targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: true, payload: result }, targetOrigin);
-    } catch (err: any) {
-      targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: false, error: err?.message || String(err) }, targetOrigin);
+    } catch (err: unknown) {
+      const message = (err as { message?: string }).message || String(err);
+      targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: false, error: message }, targetOrigin);
     }
   }
 
@@ -61,5 +73,10 @@ export function createPeerResponderBridge({
     try { window.removeEventListener('message', onMessage as EventListener); } catch {}
   }
 
-  return { start, stop };
+  function addHandler(action: string, handler: Handler) {
+    Object.defineProperty(_handlers, action, handler);
+    return _handlers.hasOwnProperty(action);
+  }
+
+  return { start, stop, addHandler };
 }

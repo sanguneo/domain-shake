@@ -1,4 +1,4 @@
-// b-bridge.js
+// peerResponder.js
 // Usage:
 //   const bridge = createPeerResponderBridge({
 //     openerOrigin: 'https://a.example.com',
@@ -15,6 +15,7 @@ export function createPeerResponderBridge({
   handlers = {},
   readyDelayMs = 0, // SPA에서 앱 초기화가 끝난 후 READY를 늦출 때 사용
 } = {}) {
+  const _handlers = Object.assign({}, handlers);
   function safeParse(data) {
     return (data && typeof data === 'object' && data.__dshake__ === true) ? data : null;
   }
@@ -70,7 +71,6 @@ export function createPeerResponderBridge({
 
   function start() {
     window.addEventListener('message', onMessage);
-    // SPA 자원/데이터가 다 준비된 시점에 READY를 보내고 싶으면 readyDelayMs 조정
     if (readyDelayMs > 0) setTimeout(sendReady, readyDelayMs);
     else {
       if (document.readyState === 'complete') sendReady();
@@ -82,5 +82,10 @@ export function createPeerResponderBridge({
     try { window.removeEventListener('message', onMessage); } catch {}
   }
 
-  return { start, stop };
+  function addHandler(action, handler) {
+    Object.defineProperty(_handlers, action, handler);
+    return _handlers.hasOwnProperty(action);
+  }
+
+  return { start, stop, addHandler };
 }
