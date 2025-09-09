@@ -1,0 +1,30 @@
+{
+  "name": "domain-shake",
+  "version": "1.0.0",
+  "description": "A tiny pair of browser modules that establish a trusted communication channel between two independent windows.",
+  "main": "js/peerInitiator.global.js",
+  "dependencies": {
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanguneo/domain-shake.git"
+  },
+  "keywords": [
+    "domain",
+    "handshake",
+    "postmessage",
+    "typescript",
+    "javascript"
+  ],
+  "author": "sanguneo <iam@sanguneo.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sanguneo/domain-shake/issues"
+  },
+  "homepage": "https://github.com/sanguneo/domain-shake#readme"
+}
