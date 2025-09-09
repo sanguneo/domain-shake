@@ -1,5 +1,5 @@
-// a-bridge.ts
-import type { TDomainShakePostMessage, TResponseMessage } from './dshake.type';
+// peerInitiator.ts
+import type { TDomainShakePostMessage, TResponseMessage } from './dshake.types';
 
 type Options = {
   partnerUrl: string;

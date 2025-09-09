@@ -1,4 +1,4 @@
-// a-bridge.js
+// peerInitiator.js
 // Usage:
 //   const bridge = createPeerInitiatorBridge({
 //     partnerUrl: 'https://b.example.com/receiver.html',
@@ -8,7 +8,7 @@
 //   await bridge.openAndHandshake();
 //   const result = await bridge.send('DO_SOMETHING', { x: 1 });
 
-export function createPeerInitiaterBridge({
+export function createPeerInitiatorBridge({
   partnerUrl,
   partnerOrigin,
   allowedOrigins = [partnerOrigin],

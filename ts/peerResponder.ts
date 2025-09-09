@@ -1,4 +1,4 @@
-// b-bridge.ts
+// peerResponder.ts
 import type { HandlerMap, TDomainShakePostMessage, TRequestMessage } from './dshake.types';
 
 type Options = {

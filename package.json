@@ -1,0 +1,21 @@
+{
+  "name": "domain-shake",
+  "version": "1.0.0",
+  "description": "Peer handshake utilities",
+  "main": "js/peerInitiator.js",
+  "scripts": {
+    "build": "tsc --target ES2017 --module es2020 --lib DOM,ES2017 --outDir js ts/peerInitiator.ts ts/peerResponder.ts && rm -f js/dshake.types.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Edge versions"
+  ]
+}
