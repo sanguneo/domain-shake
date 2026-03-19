@@ -9,7 +9,7 @@
 //   });
 //   bridge.start();
 
-import type {Handler, HandlerMap, TDomainShakePostMessage, TRequestMessage} from './dshake.types';
+import type { Handler, HandlerMap, TDomainShakePostMessage } from './dshake.types';
 
 type Options = {
   openerOrigin: string;
@@ -24,19 +24,29 @@ export function createPeerResponderBridge({
   handlers = {},
   readyDelayMs = 0,
 }: Options) {
-  const _handlers = Object.assign({}, handlers);
+  let openerRealOrigin: string | null = null;
+
+  const _handlers: HandlerMap = Object.assign({}, handlers);
+
+  function isOriginAllowed(origin: string): boolean {
+    if (allowedOrigins.length === 0) return false;
+    return allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+  }
+
   function isDshake(data: unknown): data is TDomainShakePostMessage {
     return typeof data === 'object' && data !== null && (data as { __dshake__?: boolean }).__dshake__ === true;
   }
 
   function onMessage(event: MessageEvent) {
     if (event.source !== window.opener) return;
-    if (!allowedOrigins.includes(event.origin)) return;
+
+    openerRealOrigin = event.origin;
+    if (!isOriginAllowed(event.origin)) return;
 
     const data = event.data;
     if (!isDshake(data) || data.type !== 'REQUEST') return;
 
-    const { requestId, action, payload } = data as TRequestMessage;
+    const { requestId, action, payload } = data;
     void handleRequest(event.source as Window, event.origin, requestId, action, payload);
   }
 
@@ -46,6 +56,7 @@ export function createPeerResponderBridge({
       targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: false, error: `Unknown action: ${action}` }, targetOrigin);
       return;
     }
+
     try {
       const result = await handler(payload);
       targetWin.postMessage({ __dshake__: true, type: 'RESPONSE', requestId, success: true, payload: result }, targetOrigin);
@@ -57,25 +68,30 @@ export function createPeerResponderBridge({
 
   function sendReady() {
     if (!window.opener) return;
-    window.opener.postMessage({ __dshake__: true, type: 'READY' }, openerOrigin);
+
+    const targetOrigin = openerRealOrigin || (allowedOrigins.includes('*') ? '*' : openerOrigin);
+    window.opener.postMessage({ __dshake__: true, type: 'READY' }, targetOrigin);
   }
 
   function start() {
     window.addEventListener('message', onMessage as EventListener);
-    if (readyDelayMs > 0) setTimeout(sendReady, readyDelayMs);
-    else {
+    if (readyDelayMs > 0) {
+      setTimeout(sendReady, readyDelayMs);
+    } else {
       if (document.readyState === 'complete') sendReady();
       else window.addEventListener('load', sendReady, { once: true });
     }
   }
 
   function stop() {
-    try { window.removeEventListener('message', onMessage as EventListener); } catch {}
+    try {
+      window.removeEventListener('message', onMessage as EventListener);
+    } catch {}
   }
 
   function addHandler(action: string, handler: Handler) {
-    Object.defineProperty(_handlers, action, handler);
-    return _handlers.hasOwnProperty(action);
+    _handlers[action] = handler;
+    return true;
   }
 
   return { start, stop, addHandler };

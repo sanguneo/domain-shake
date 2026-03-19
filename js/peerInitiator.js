@@ -1,121 +1,148 @@
-// peerInitiator.js
-// Usage:
-//   const bridge = createPeerInitiatorBridge({
-//     partnerUrl: 'https://b.example.com/receiver.html',
-//     partnerOrigin: 'https://b.example.com',
-//     allowedOrigins: ['https://b.example.com'],
-//   });
-//   await bridge.openAndHandshake();
-//   const result = await bridge.send('DO_SOMETHING', { x: 1 });
-
-export function createPeerInitiatorBridge({
+function createPeerInitiatorBridge({
   partnerUrl,
   partnerOrigin,
   allowedOrigins = [partnerOrigin],
-  features = 'popup,width=900,height=700',
-  handshakeTimeoutMs = 15000,
-  requestTimeoutMs = 20000,
-} = {}) {
+  features = "popup,width=900,height=700",
+  handshakeTimeoutMs = 15e3,
+  requestTimeoutMs = 2e4
+}) {
   let partnerWin = null;
   let isReady = false;
-  let readyResolve;
-  let readyReject;
+  let readyResolve = null;
+  let readyReject = null;
   let readyTimer = null;
-
-  const readyPromise = new Promise((res, rej) => { readyResolve = res; readyReject = rej; });
-
+  let readyPromise = null;
+  let handshakeInFlight = null;
+  let listenerAttached = false;
   let reqSeq = 1;
-  const pending = new Map(); // requestId -> {resolve, reject, timer}
-  const queue = []; // messages queued before READY
-
-  function openAndHandshake() {
-    partnerWin = window.open(partnerUrl, '_blank', features);
-    if (!partnerWin) throw new Error('Popup blocked: cannot open partner window');
-
-    // start handshake timeout
-    readyTimer = setTimeout(() => {
-      readyReject(new Error('Handshake timeout: no READY from child'));
-    }, handshakeTimeoutMs);
-
-    // listen once here (idempotent: we guard multiple adds)
-    window.addEventListener('message', onMessage);
-    return readyPromise;
+  const pending = /* @__PURE__ */ new Map();
+  const queue = [];
+  function isOriginAllowed(origin) {
+    if (allowedOrigins.length === 0) return false;
+    return allowedOrigins.includes("*") || allowedOrigins.includes(origin);
   }
-
+  function attachMessageListener() {
+    if (listenerAttached) return;
+    window.addEventListener("message", onMessage);
+    listenerAttached = true;
+  }
+  function resetHandshakeState() {
+    isReady = false;
+    if (readyTimer !== null) {
+      window.clearTimeout(readyTimer);
+      readyTimer = null;
+    }
+    readyPromise = new Promise((res, rej) => {
+      readyResolve = res;
+      readyReject = rej;
+    });
+  }
+  function openAndHandshake() {
+    if (isReady && partnerWin && !partnerWin.closed) {
+      return Promise.resolve(true);
+    }
+    if (handshakeInFlight) return handshakeInFlight;
+    attachMessageListener();
+    resetHandshakeState();
+    partnerWin = window.open(partnerUrl, "_blank", features);
+    if (!partnerWin) {
+      const err = new Error("Popup blocked: cannot open partner window");
+      readyReject?.(err);
+      return Promise.reject(err);
+    }
+    readyTimer = window.setTimeout(() => {
+      readyReject?.(new Error("Handshake timeout: no READY from child"));
+      readyTimer = null;
+    }, handshakeTimeoutMs);
+    handshakeInFlight = readyPromise.finally(() => {
+      handshakeInFlight = null;
+    });
+    return handshakeInFlight;
+  }
   function onMessage(event) {
-    const { origin, source, data } = event;
-    if (!source || source !== partnerWin) return;
-    if (!allowedOrigins.includes(origin)) return; // SECURITY
-
-    if (!data || typeof data !== 'object' || data.__dshake__ !== true) return;
-
-    const { type } = data;
-
-    if (type === 'READY') {
+    if (!partnerWin || event.source !== partnerWin) return;
+    if (!isOriginAllowed(event.origin)) return;
+    const data = event.data;
+    if (!data || data.__dshake__ !== true) return;
+    if (data.type === "READY") {
       isReady = true;
-      clearTimeout(readyTimer);
-      readyResolve(true);
-      // flush queue
-      while (queue.length) {
-        const msg = queue.shift();
-        partnerWin.postMessage(msg, partnerOrigin);
+      if (readyTimer !== null) {
+        window.clearTimeout(readyTimer);
+        readyTimer = null;
+      }
+      readyResolve?.(true);
+      while (queue.length && partnerWin && !partnerWin.closed) {
+        partnerWin.postMessage(queue.shift(), partnerOrigin);
       }
       return;
     }
-
-    if (type === 'RESPONSE') {
+    if (data.type === "RESPONSE") {
       const { requestId, success, payload, error } = data;
       const entry = pending.get(requestId);
       if (!entry) return;
-      clearTimeout(entry.timer);
+      window.clearTimeout(entry.timer);
       pending.delete(requestId);
-      success ? entry.resolve(payload) : entry.reject(new Error(error || 'Unknown error'));
-      return;
+      success ? entry.resolve(payload) : entry.reject(new Error(error || "Unknown error"));
     }
   }
-
-  function send(action, payload, { timeoutMs = requestTimeoutMs } = {}) {
-    if (!partnerWin || partnerWin.closed) throw new Error('Partner window not available');
+  function send(action, payload, timeoutMs = requestTimeoutMs) {
     const requestId = `req_${Date.now()}_${reqSeq++}`;
-    const msg = {
-      __dshake__: true,
-      type: 'REQUEST',
-      requestId,
-      action,
-      payload,
-    };
-
+    const msg = { __dshake__: true, type: "REQUEST", requestId, action, payload };
     const p = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const timer = window.setTimeout(() => {
         pending.delete(requestId);
         reject(new Error(`Request timeout: ${action}`));
       }, timeoutMs);
       pending.set(requestId, { resolve, reject, timer });
     });
-
-    if (!isReady) {
+    const unavailable = !partnerWin || partnerWin.closed;
+    if (unavailable) {
       queue.push(msg);
-    } else {
-      partnerWin.postMessage(msg, partnerOrigin);
+      void openAndHandshake().catch((err) => {
+        const entry = pending.get(requestId);
+        if (entry) {
+          window.clearTimeout(entry.timer);
+          pending.delete(requestId);
+          entry.reject(err);
+        }
+      });
+      return p;
     }
+    if (!isReady) queue.push(msg);
+    else partnerWin.postMessage(msg, partnerOrigin);
     return p;
   }
-
   function close() {
-    try { window.removeEventListener('message', onMessage); } catch {}
+    try {
+      window.removeEventListener("message", onMessage);
+      listenerAttached = false;
+    } catch {
+    }
+    if (readyTimer !== null) {
+      window.clearTimeout(readyTimer);
+      readyTimer = null;
+    }
+    readyReject?.(new Error("Bridge closed"));
+    handshakeInFlight = null;
     pending.forEach(({ reject, timer }) => {
-      clearTimeout(timer); reject(new Error('Bridge closed'));
+      window.clearTimeout(timer);
+      reject(new Error("Bridge closed"));
     });
     pending.clear();
+    queue.length = 0;
     isReady = false;
     if (partnerWin && !partnerWin.closed) partnerWin.close();
     partnerWin = null;
   }
-
   return {
     openAndHandshake,
     send,
     close,
-    get isReady() { return isReady; },
+    get isReady() {
+      return isReady;
+    }
   };
 }
+export {
+  createPeerInitiatorBridge
+};
