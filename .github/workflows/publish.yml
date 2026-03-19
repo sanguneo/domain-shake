@@ -22,15 +22,19 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
-          always-auth: true
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
+
+      - name: Ensure modern npm for trusted publishing
+        run: |
+          npm i -g npm@latest
+          npm --version
 
       - name: Validate release tag matches package version
         if: ${{ github.event_name == 'release' }}
@@ -42,18 +46,5 @@ jobs:
             exit 1
           fi
 
-      - name: Verify npm auth
-        run: |
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "NPM_TOKEN secret is empty or not available to this workflow."
-            exit 1
-          fi
-          npm whoami --registry=https://registry.npmjs.org
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish (Trusted Publishing / OIDC)
+        run: npm publish --provenance --access public
