@@ -24,6 +24,7 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+          always-auth: true
 
       - name: Install dependencies
         run: npm ci
@@ -41,13 +42,18 @@ jobs:
             exit 1
           fi
 
-      - name: Publish
+      - name: Verify npm auth
         run: |
-          if [ -n "$NPM_TOKEN" ]; then
-            npm publish --access public
-          else
-            npm publish --provenance --access public
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "NPM_TOKEN secret is empty or not available to this workflow."
+            exit 1
           fi
+          npm whoami --registry=https://registry.npmjs.org
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish
+        run: npm publish --access public
+        env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
